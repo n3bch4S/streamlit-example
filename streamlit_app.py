@@ -1,44 +1,47 @@
-import altair as alt
-import numpy as np
-import pandas as pd
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 import streamlit as st
+import pandas as pd
+from PIL import Image
+import config
 
-"""
-# Welcome to Streamlit!
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+def getImgByName(imgList: list[UploadedFile], fileName: str) -> UploadedFile:
+    nameList = list(map(lambda imgFile: imgFile.name, imgList))
+    idxFile = nameList.index(fileName)
+    return imgList[idxFile]
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+if __name__ == "__main__":
+    """
+    # Colorizer
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
-
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
-
-df = pd.DataFrame(
-    {
-        "x": x,
-        "y": y,
-        "idx": indices,
-        "rand": np.random.randn(num_points),
-    }
-)
-
-st.altair_chart(
-    alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
+    ---
+    """
+    uploadedImgs = st.file_uploader(
+        label="Please put your image here :frame_with_picture:",
+        accept_multiple_files=True,
+        type=config.ACCEPT_TYPE,
     )
-)
+
+    toolsBox, fileSelectBox = st.columns(2)
+    colorPickBox, eraserBox, rotateClockBox, rotateAntiClockBox = toolsBox.columns(4)
+    color = colorPickBox.color_picker(
+        label="colorpicker",
+        value=config.DEFAULT_COLOR_PICKER,
+        label_visibility="collapsed",
+    )
+    eraser = eraserBox.checkbox(label="erase")
+    rotateClock = rotateClockBox.button(label="Clock", use_container_width=True)
+    rotateAntiClock = rotateAntiClockBox.button(label="Anti", use_container_width=True)
+    fileSelect = fileSelectBox.selectbox(
+        label="fileSelect",
+        options=map(lambda x: x.name, uploadedImgs),
+        label_visibility="collapsed",
+    )
+
+    st.image(image=getImgByName(uploadedImgs, fileSelect))
+    """
+    ---
+
+    *in progress*
+    """
