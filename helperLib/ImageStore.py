@@ -1,77 +1,86 @@
-from inspect import getfile
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 from PIL import Image
+from helperLib import ImageProcess
 
 
-def getImgFileName(imgFile: UploadedFile) -> str:
-    return imgFile.name
+def getFilename(file: UploadedFile) -> str:
+    return file.name
 
 
-def getFileNameList(imageFiles: list[UploadedFile]) -> list[str]:
-    return list(map(getImgFileName, imageFiles))
+def getFilenames(files: list[UploadedFile]) -> list[str]:
+    return list(map(getFilename, files))
 
 
-def getImgFileByName(
-    imgList: list[UploadedFile] | None, fileName: str
-) -> UploadedFile | None:
-    if imgList is None:
-        return imgList
-    nameList = list(map(getImgFileName, imgList))
-    idxFile = nameList.index(fileName)
-    return imgList[idxFile]
+def getFileByName(files: list[UploadedFile], filename: str) -> UploadedFile | None:
+    filenames: list[str] = getFilenames(files)
+    if filename not in filenames:
+        return None
+    filePosition: int = filenames.index(filename)
+    return files[filePosition]
 
 
-def updateImageFileList(
-    files: list[UploadedFile], refFiles: list[UploadedFile]
+def addFileToImageDict(file: UploadedFile, imageDict: dict[str, Image.Image]) -> None:
+    filename: str = getFilename(file)
+    if filename not in imageDict:
+        imageDict[filename] = Image.open(file)
+
+
+def editImageInDict(
+    imageName: str, newFile: UploadedFile, imageDict: dict[str, Image.Image]
 ) -> None:
-    refNames = getFileNameList(refFiles)
-    filesName = getFileNameList(files)
+    if imageName in imageDict:
+        imageDict[imageName] = Image.open(newFile)
+
+
+def deleteImageInDict(imageName: str, imageDict: dict[str, Image.Image]) -> None:
+    if imageName in imageDict:
+        imageDict.pop(imageName)
+
+
+def updateFiles(files: list[UploadedFile], referenceFiles: list[UploadedFile]) -> None:
+    referenceNames: list[str] = getFilenames(referenceFiles)
+    filenames: list[str] = getFilenames(files)
     for i in range(len(files) - 1, -1, -1):
-        filename = filesName[i]
-        if filename not in refNames:
+        filename: str = filenames[i]
+        if filename not in referenceNames:
             files.pop(i)
 
-    filesName = getFileNameList(files)
-    for i in range(len(refFiles)):
-        refname = refNames[i]
-        if refname not in filesName:
-            files.append(refFiles[i])
-            filesName.append(getImgFileName(refFiles[i]))
+    for i in range(len(referenceFiles)):
+        referenceName: str = referenceNames[i]
+        if referenceName not in filenames:
+            filenames.append(referenceName)
+            files.append(referenceFiles[i])
 
 
 def updateImageDict(
-    imgDict: dict[str, Image.Image], listOfFile: list[UploadedFile] | None
+    imageDict: dict[str, Image.Image], referenceFiles: list[UploadedFile]
 ) -> None:
-    if listOfFile is None:
-        imgDict.clear()
-        return
-
-    fileNames: list[str] = getFileNameList(listOfFile)
-    for imageName in list(imgDict.keys()):
-        if imageName not in fileNames:
-            # print(f"delete {imageName}")
-            del imgDict[imageName]
-    for fileName in fileNames:
-        if fileName not in imgDict:
-            imageFile: UploadedFile | None = getImgFileByName(listOfFile, fileName)
-            if imageFile is not None:
-                # print(f"add {fileName}")
-                imgDict[fileName] = Image.open(imageFile)
+    referenceNames: list[str] = getFilenames(referenceFiles)
+    for imageName in list(imageDict):
+        if imageName not in referenceNames:
+            deleteImageInDict(imageName, imageDict)
+    for referenceName in referenceNames:
+        if referenceName not in imageDict:
+            file: UploadedFile | None = getFileByName(referenceFiles, referenceName)
+            if file is not None:
+                addFileToImageDict(file, imageDict)
 
 
-def resetImageDict(
-    imageDict: dict[str, Image.Image], listOfFile: list[UploadedFile], imageName: str
+def resetImageInDict(
+    imageName: str,
+    imageDict: dict[str, Image.Image],
+    referenceFiles: list[UploadedFile],
 ) -> None:
-    imageFile: UploadedFile | None = getImgFileByName(
-        imgList=listOfFile, fileName=imageName
-    )
-    if imageFile is not None:
-        imageDict[imageName] = Image.open(imageFile)
+    file: UploadedFile | None = getFileByName(referenceFiles, imageName)
+    if file is not None:
+        editImageInDict(imageName, file, imageDict)
 
 
 if __name__ == "__main__":
     d = {
-        "1": Image.open("images/IMG_7863.jpeg"),
-        "2": Image.open("images/pitcher1_660cdc9fa0014.jpeg"),
-        "3": Image.open("images/pitcher2_660cdcb4f0774.jpeg"),
+        "1": 1,
+        "2": 2,
+        "3": 3,
     }
+    d.pop("1")
+    print(d)

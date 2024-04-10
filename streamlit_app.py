@@ -1,5 +1,4 @@
 from streamlit.runtime.uploaded_file_manager import UploadedFile
-from streamlit.delta_generator import DeltaGenerator
 import streamlit as st
 import pandas as pd
 from helperLib import ImageProcess, ImageStore
@@ -11,14 +10,12 @@ if __name__ == "__main__":
     print("Start")
     # Init page config and pre-define image storage
     st.set_page_config(page_title="Recolor ML", page_icon=":art:", layout="wide")
-    if "imageDict" not in st.session_state:
-        st.session_state["imageDict"] = {}
-    imgDict: dict[str, Image.Image] = st.session_state["imageDict"]
+    if "origImageDict" not in st.session_state:
+        st.session_state["origImageDict"] = {}
+    origImageDict: dict[str, Image.Image] = st.session_state["origImageDict"]
     if "files" not in st.session_state:
         st.session_state["files"] = []
     files: list[UploadedFile] = st.session_state["files"]
-    if "fileSelectNow" not in st.session_state:
-        st.session_state["fileSelectNow"] = ""
     """
     # Colorizer
 
@@ -26,80 +23,77 @@ if __name__ == "__main__":
     """
 
     # Uploader
-    uploadedImgs: list[UploadedFile] | None = st.file_uploader(
+    uploadedFiles: list[UploadedFile] | None = st.file_uploader(
         label="Please put your image here :frame_with_picture:",
         accept_multiple_files=True,
-        on_change=ImageStore.updateImageDict,
-        kwargs={"imgDict": imgDict, "listOfFile": files},
         type=config.ACCEPT_TYPE,
     )
-    if uploadedImgs is not None:
-        ImageStore.updateImageFileList(files=files, refFiles=uploadedImgs)
+    if uploadedFiles is not None:
+        ImageStore.updateFiles(files, uploadedFiles)
+    hasSomeFile: bool = uploadedFiles is not None and len(uploadedFiles) > 0
 
     # Image menu
-    # toolsBox: DeltaGenerator
-    # fileSelectBox: DeltaGenerator
-    # colorPickBox: DeltaGenerator
-    # eraserBox: DeltaGenerator
-    # rotateClockBox: DeltaGenerator
-    # rotateAntiClockBox: DeltaGenerator
-    # resetBox: DeltaGenerator
     toolsBox, fileSelectBox = st.columns(2)
-    colorPickBox, eraserBox, rotateAntiClockBox, rotateClockBox, resetBox = (
+    colorPicker, eraserButton, rotateLeftButton, rotateRightButton, resetButton = (
         toolsBox.columns(5)
     )
 
-    fileSelect: str | None = fileSelectBox.selectbox(
-        label="fileSelect",
+    selectedFilename: str | None = fileSelectBox.selectbox(
+        label="Select the File",
         options=(
-            map(ImageStore.getImgFileName, uploadedImgs)
-            if uploadedImgs is not None
+            map(ImageStore.getFilename, uploadedFiles)
+            if uploadedFiles is not None
             else []
         ),
+        disabled=not hasSomeFile,
         label_visibility="collapsed",
     )
-    if fileSelect is not None:
-        st.session_state["fileSelectNow"] = fileSelect
-    color: str = colorPickBox.color_picker(
-        label="colorpicker",
+    color: str = colorPicker.color_picker(
+        label="Color Picker",
         value=config.DEFAULT_COLOR_PICKER,
+        disabled=not hasSomeFile,
         label_visibility="collapsed",
     )
-    eraser: bool = eraserBox.checkbox(label="erase")
-    rotateClock: bool = rotateClockBox.button(
-        label="Clock",
+    isEraser: bool = eraserButton.checkbox(
+        label="Eraser",
+        disabled=not hasSomeFile,
+    )
+    rotateRightButton.button(
+        label="Right",
         on_click=ImageProcess.rotateClockImgIn,
-        kwargs={"imgDict": imgDict, "imgFileName": st.session_state["fileSelectNow"]},
+        args=(origImageDict, selectedFilename),
+        disabled=not hasSomeFile,
         use_container_width=True,
     )
-    rotateAntiClock: bool = rotateAntiClockBox.button(
-        label="Anti",
+    rotateLeftButton.button(
+        label="Left",
         on_click=ImageProcess.rotateAntiClockImgIn,
-        kwargs={"imgDict": imgDict, "imgFileName": st.session_state["fileSelectNow"]},
+        args=(origImageDict, selectedFilename),
+        disabled=not hasSomeFile,
         use_container_width=True,
     )
-    resetBtn: bool = resetBox.button(
-        label="reset",
-        on_click=ImageStore.resetImageDict,
-        kwargs={
-            "imageDict": imgDict,
-            "listOfFile": files,
-            "imageName": st.session_state["fileSelectNow"],
-        },
+    resetButton.button(
+        label="Reset",
+        on_click=ImageStore.resetImageInDict,
+        args=(selectedFilename, origImageDict, files),
+        disabled=not hasSomeFile,
         use_container_width=True,
     )
 
     # Image showing
-    if fileSelect is not None:
-        imgFile: UploadedFile | None = ImageStore.getImgFileByName(
-            uploadedImgs, fileSelect
+    processBox, originalBox = st.columns(2)
+    ImageStore.updateImageDict(origImageDict, files)
+    if selectedFilename is not None:
+        processBox.image(
+            image=origImageDict[selectedFilename],
+            caption="Process",
+            use_column_width=True,
         )
-        if imgFile is not None:
-            if fileSelect not in imgDict:
-                imgDict[fileSelect] = Image.open(imgFile)
-            img: Image.Image = imgDict[fileSelect]
-            # img.show()
-            st.image(image=st.session_state["imageDict"][fileSelect])
+        originalBox.image(
+            image=origImageDict[selectedFilename],
+            caption="Original",
+            use_column_width=True,
+        )
     """
     ---
 
