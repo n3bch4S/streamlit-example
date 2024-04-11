@@ -4,6 +4,19 @@ from PIL import Image, ImageEnhance
 from helperLib import config
 
 
+def preserveResize(
+    oldImage: Image.Image, newLongSide: int = config.LONG_SIDE
+) -> Image.Image:
+    oldSize: tuple[int, int] = oldImage.size
+    oldLongSide: int = max(oldSize)
+    scaling: float = newLongSide / oldLongSide
+    newWidth: int = round(oldSize[0] * scaling)
+    newHeight: int = round(oldSize[1] * scaling)
+    newSize: tuple[int, int] = (newWidth, newHeight)
+    newImage: Image.Image = oldImage.resize(newSize)
+    return newImage
+
+
 def rotateClockImgIn(imgDict: dict[str, Image.Image], imgFileName: str) -> None:
     if imgFileName not in imgDict:
         return

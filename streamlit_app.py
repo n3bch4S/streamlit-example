@@ -111,13 +111,19 @@ if __name__ == "__main__":
     ImageStore.updateImageDict(origImageDict, files)
     ImageStore.updateImageDict(editingImageDict, files)
     if selectedFilename is not None:
+        origImage: Image.Image = ImageProcess.preserveResize(
+            origImageDict[selectedFilename]
+        )
+        editingImage: Image.Image = ImageProcess.preserveResize(
+            editingImageDict[selectedFilename]
+        )
         processBox.image(
-            image=editingImageDict[selectedFilename],
+            image=editingImage,
             caption="Process",
             use_column_width=True,
         )
         originalBox.image(
-            image=origImageDict[selectedFilename],
+            image=origImage,
             caption="Original",
             use_column_width=True,
         )
