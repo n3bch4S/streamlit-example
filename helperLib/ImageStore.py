@@ -37,6 +37,31 @@ def deleteImageInDict(imageName: str, imageDict: dict[str, Image.Image]) -> None
         imageDict.pop(imageName)
 
 
+def rotateClockImgIn(imgDict: dict[str, Image.Image], imgFileName: str) -> None:
+    if imgFileName not in imgDict:
+        return
+    img: Image.Image = imgDict[imgFileName]
+    imgDict[imgFileName] = img.rotate(angle=-90, expand=True)
+
+
+def rotateAntiClockImgIn(imgDict: dict[str, Image.Image], imgFileName: str) -> None:
+    if imgFileName not in imgDict:
+        return
+    img: Image.Image = imgDict[imgFileName]
+    imgDict[imgFileName] = img.rotate(angle=90, expand=True)
+
+
+def recolorImageFrom(
+    origImageDict: dict[str, Image.Image],
+    newImageDict: dict[str, Image.Image],
+    imageName: str,
+) -> None:
+    if imageName not in origImageDict or imageName not in newImageDict:
+        return
+    image: Image.Image = origImageDict[imageName]
+    newImageDict[imageName] = ImageProcess.recolorImage(image)
+
+
 def updateFiles(files: list[UploadedFile], referenceFiles: list[UploadedFile]) -> None:
     referenceNames: list[str] = getFilenames(referenceFiles)
     filenames: list[str] = getFilenames(files)

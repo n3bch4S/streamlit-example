@@ -1,10 +1,8 @@
 from streamlit.runtime.uploaded_file_manager import UploadedFile
-import streamlit as st
-import pandas as pd
-from helperLib import ImageProcess, ImageStore, ComponentControl
 from PIL import Image
-from helperLib import config
+from helperLib import ImageProcess, ImageStore, ComponentControl, config
 
+import streamlit as st
 
 if __name__ == "__main__":
     print("Start")
@@ -75,7 +73,7 @@ if __name__ == "__main__":
             selectedFilename,
             origImageDict,
             editingImageDict,
-            ImageProcess.rotateClockImgIn,
+            ImageStore.rotateClockImgIn,
         ),
         disabled=not hasSomeFile,
         use_container_width=True,
@@ -87,7 +85,7 @@ if __name__ == "__main__":
             selectedFilename,
             origImageDict,
             editingImageDict,
-            ImageProcess.rotateAntiClockImgIn,
+            ImageStore.rotateAntiClockImgIn,
         ),
         disabled=not hasSomeFile,
         use_container_width=True,
@@ -111,6 +109,7 @@ if __name__ == "__main__":
     ImageStore.updateImageDict(origImageDict, files)
     ImageStore.updateImageDict(editingImageDict, files)
     if selectedFilename is not None:
+        ImageStore.recolorImageFrom(origImageDict, editingImageDict, selectedFilename)
         origImage: Image.Image = ImageProcess.preserveResize(
             origImageDict[selectedFilename]
         )

@@ -1,7 +1,14 @@
-from streamlit.runtime.uploaded_file_manager import UploadedFile
-from streamlit.delta_generator import DeltaGenerator
-from PIL import Image, ImageEnhance
-from helperLib import config
+from PIL import Image
+from skimage import color
+from numpy import ndarray
+from torch import Tensor
+from torchvision import transforms
+from helperLib import config, model
+
+import numpy as np
+import torch
+
+predict: model.vanilla_autoencoder = model.getTrainedModel()
 
 
 def preserveResize(
@@ -17,45 +24,50 @@ def preserveResize(
     return newImage
 
 
-def rotateClockImgIn(imgDict: dict[str, Image.Image], imgFileName: str) -> None:
-    if imgFileName not in imgDict:
-        return
-    img: Image.Image = imgDict[imgFileName]
-    imgDict[imgFileName] = img.rotate(angle=-90, expand=True)
+def preprocessImage(image: Image.Image) -> tuple[Tensor, Tensor]:
+    image = image.convert("RGB")
 
-
-def rotateAntiClockImgIn(imgDict: dict[str, Image.Image], imgFileName: str) -> None:
-    if imgFileName not in imgDict:
-        return
-    img: Image.Image = imgDict[imgFileName]
-    imgDict[imgFileName] = img.rotate(angle=90, expand=True)
-
-
-def smallenImageIn(imageDict: dict[str, Image.Image], imageName: str) -> None:
-    if imageName not in imageDict:
-        return
-    image: Image.Image = imageDict[imageName]
-    imageDict[imageName] = image.resize(
-        size=(config.MODEL_WIDTH, config.MODEL_HEIGHT),
+    image = transforms.Resize((config.MODEL_WIDTH, config.MODEL_HEIGHT), Image.BICUBIC)(  # type: ignore
+        image
     )
+    resizeImage: ndarray = np.array(image)
 
+    labImage: ndarray = color.rgb2lab(resizeImage).astype("float32")
+    tensorImage: Tensor = transforms.ToTensor()(labImage)
 
-def greyingImageIn(imageDict: dict[str, Image.Image], imageName: str) -> None:
-    if imageName not in imageDict:
-        return
-    image: Image.Image = imageDict[imageName]
-    imageDict[imageName] = image.convert(mode="L")
-
-
-def preprocessImage(image: Image.Image) -> Image.Image:
-    image = image.convert(mode="L")
-    image = image.resize(
-        size=(config.MODEL_WIDTH, config.MODEL_HEIGHT),
+    LImage: Tensor = tensorImage[[0], ...]
+    allLImage: Tensor = torch.cat((LImage, LImage, LImage), dim=0).reshape(
+        1, 3, config.MODEL_HEIGHT, config.MODEL_HEIGHT
     )
-    return image
+    return allLImage, LImage
+
+
+def postProcessImage(image: Image.Image, size: tuple[int, int]) -> Image.Image:
+    newImage: Image.Image = image.resize(size)
+    return newImage
+
+
+def reconstructImage(ABImage, LImage: Tensor) -> Image.Image:
+    labMatrix: ndarray = np.zeros((224, 224, 3))
+    labMatrix[:, :, 0] = LImage[0, 0].numpy()
+    labMatrix[:, :, 1] = ABImage[0, 0].detach().numpy() * 128
+    labMatrix[:, :, 2] = ABImage[0, 1].detach().numpy() * 128
+    rgbMatrix: ndarray = (color.lab2rgb(labMatrix) * 255).astype(np.uint8)
+    completeImage: Image.Image = Image.fromarray(rgbMatrix)
+    return completeImage
+
+
+def recolorImage(image: Image.Image) -> Image.Image:
+    imageSize = image.size
+    allLImage, LImage = preprocessImage(image)
+    ABImage = predict(allLImage)
+    coloredImage: Image.Image = reconstructImage(ABImage, LImage)
+    coloredImage = postProcessImage(coloredImage, imageSize)
+    return coloredImage
 
 
 if __name__ == "__main__":
-    img: Image.Image = Image.open("images/IMG_7863.jpeg")
+    img: Image.Image = Image.open("helperLib/cat.jpg")
     img.show()
-    print(img.size, img.format, img.mode)
+    predictedImage: Image.Image = recolorImage(img)
+    predictedImage.show()
